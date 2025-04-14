@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+        <Property name="APP_LOG_ROOT">/var/log/taskmanager</Property>
+    </Properties>
+    
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+        
+        <RollingFile name="ApplicationLog" fileName="${APP_LOG_ROOT}/application.log"
+                     filePattern="${APP_LOG_ROOT}/application-%d{yyyy-MM-dd}-%i.log">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10MB" />
+                <TimeBasedTriggeringPolicy interval="1" />
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+        
+        <RollingFile name="ErrorLog" fileName="${APP_LOG_ROOT}/error.log"
+                     filePattern="${APP_LOG_ROOT}/error-%d{yyyy-MM-dd}-%i.log">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10MB" />
+                <TimeBasedTriggeringPolicy interval="1" />
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+        
+        <RollingFile name="AccessLog" fileName="${APP_LOG_ROOT}/access.log"
+                     filePattern="${APP_LOG_ROOT}/access-%d{yyyy-MM-dd}-%i.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %X{remoteAddr} %X{requestURI} %X{userAgent} %X{sessionId} %X{userId} - %msg%n"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10MB" />
+                <TimeBasedTriggeringPolicy interval="1" />
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+        
+        <JDBC name="DatabaseAudit" tableName="log_audit">
+            <ConnectionFactory class="com.taskmanager.util.DatabaseUtil" method="getConnection" />
+            <Column name="event_date" isEventTimestamp="true" />
+            <Column name="level" pattern="%level" />
+            <Column name="logger" pattern="%logger" />
+            <Column name="message" pattern="%message" />
+            <Column name="user_id" pattern="%X{userId}" />
+            <Column name="ip_address" pattern="%X{remoteAddr}" />
+            <Column name="action" pattern="%X{action}" />
+        </JDBC>
+    </Appenders>
+    
+    <Loggers>
+        <Logger name="com.taskmanager" level="debug" additivity="false">
+            <AppenderRef ref="ApplicationLog" />
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="ErrorLog" level="error" />
+        </Logger>
+        
+        <Logger name="com.taskmanager.filter.RequestLoggingFilter" level="info" additivity="false">
+            <AppenderRef ref="AccessLog" />
+        </Logger>
+        
+        <Logger name="com.taskmanager.service.AuditService" level="info" additivity="false">
+            <AppenderRef ref="DatabaseAudit" />
+        </Logger>
+        
+        <!-- Framework loggers -->
+        <Logger name="org.hibernate" level="warn" />
+        <Logger name="org.springframework" level="warn" />
+        <Logger name="org.apache" level="warn" />
+        
+        <!-- SQL logging -->
+        <Logger name="org.hibernate.SQL" level="debug" additivity="false">
+            <AppenderRef ref="ApplicationLog" />
+        </Logger>
+        
+        <Root level="info">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="ApplicationLog" />
+            <AppenderRef ref="ErrorLog" level="error" />
+        </Root>
+    </Loggers>
+</Configuration>
