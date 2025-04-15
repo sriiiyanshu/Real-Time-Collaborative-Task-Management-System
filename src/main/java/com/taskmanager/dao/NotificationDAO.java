@@ -142,6 +142,39 @@ public class NotificationDAO extends BaseDAO {
     }
     
     /**
+     * Find recent notifications for a specific user with Long userId
+     *
+     * @param userId The ID of the user (as Long)
+     * @param limit Maximum number of notifications to return
+     * @return List of recent notifications for the user
+     * @throws SQLException if a database error occurs
+     */
+    public List<Notification> findRecentNotifications(Long userId, int limit) throws SQLException {
+        String sql = "SELECT * FROM notifications WHERE user_id = ? ORDER BY creation_date DESC LIMIT ?";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        List<Notification> notifications = new ArrayList<>();
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, userId);
+            stmt.setInt(2, limit);
+            rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                notifications.add(mapResultSetToNotification(rs));
+            }
+            
+            return notifications;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
      * Count unread notifications by user ID
      */
     public int countUnreadByUserId(Integer userId) throws SQLException {

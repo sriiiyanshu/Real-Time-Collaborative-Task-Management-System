@@ -884,6 +884,160 @@ public class TaskDAO extends BaseDAO {
     }
     
     /**
+     * Count tasks due today for a specific user
+     *
+     * @param userId The ID of the user
+     * @return Count of tasks due today for the user
+     * @throws SQLException if a database error occurs
+     */
+    public int countTasksDueToday(Long userId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM tasks WHERE assignee_id = ? AND DATE(due_date) = CURRENT_DATE AND status != 'Completed'";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, userId);
+            
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
+     * Count overdue tasks for a specific user
+     *
+     * @param userId The ID of the user
+     * @return Count of overdue tasks for the user
+     * @throws SQLException if a database error occurs
+     */
+    public int countOverdueTasks(Long userId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM tasks WHERE assignee_id = ? AND due_date < CURRENT_DATE AND status != 'Completed'";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, userId);
+            
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
+     * Count completed tasks for a specific user
+     *
+     * @param userId The ID of the user
+     * @return Count of completed tasks for the user
+     * @throws SQLException if a database error occurs
+     */
+    public int countCompletedTasks(Long userId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM tasks WHERE assignee_id = ? AND status = 'Completed'";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, userId);
+            
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
+     * Find recent tasks for a specific user
+     *
+     * @param userId The ID of the user
+     * @param limit Maximum number of tasks to return
+     * @return List of recent tasks for the user
+     * @throws SQLException if a database error occurs
+     */
+    public List<Task> findRecentTasks(Long userId, int limit) throws SQLException {
+        String sql = "SELECT * FROM tasks WHERE assignee_id = ? OR creator_id = ? " +
+                     "ORDER BY creation_date DESC LIMIT ?";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        List<Task> tasks = new ArrayList<>();
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, userId);
+            stmt.setLong(2, userId);
+            stmt.setInt(3, limit);
+            
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                tasks.add(mapRowToTask(rs));
+            }
+            return tasks;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
+     * Find upcoming deadlines for a specific user
+     *
+     * @param userId The ID of the user
+     * @param limit Maximum number of tasks to return
+     * @return List of upcoming tasks with deadlines for the user
+     * @throws SQLException if a database error occurs
+     */
+    public List<Task> findUpcomingDeadlines(Long userId, int limit) throws SQLException {
+        String sql = "SELECT * FROM tasks WHERE assignee_id = ? AND status != 'Completed' " +
+                     "AND due_date >= CURRENT_DATE ORDER BY due_date ASC LIMIT ?";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        List<Task> tasks = new ArrayList<>();
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, userId);
+            stmt.setInt(2, limit);
+            
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                tasks.add(mapRowToTask(rs));
+            }
+            return tasks;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
      * Map a database row to a Task object
      */
     private Task mapRowToTask(ResultSet rs) throws SQLException {

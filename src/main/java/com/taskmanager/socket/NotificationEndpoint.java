@@ -1,6 +1,7 @@
 package com.taskmanager.socket;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -81,7 +82,7 @@ public class NotificationEndpoint {
             
             session.getBasicRemote().sendObject(confirmationMessage);
             session.getBasicRemote().sendObject(countMessage);
-        } catch (IOException | EncodeException e) {
+        } catch (IOException | EncodeException | SQLException e) {
             LOGGER.log(Level.SEVERE, "Error sending initial notification data", e);
         }
         
@@ -99,7 +100,7 @@ public class NotificationEndpoint {
                 // Handle marking notification as read
                 Integer notificationId = message.getObjectId();
                 if (notificationId != null) {
-                    boolean success = notificationService.markAsRead(notificationId, Integer.parseInt(userId));
+                    boolean success = notificationService.markAsRead(notificationId);
                     
                     SocketMessage responseMessage = new SocketMessage(
                         "notification_update",
@@ -118,8 +119,10 @@ public class NotificationEndpoint {
                     session.getBasicRemote().sendObject(countMessage);
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException | EncodeException | SQLException e) {
             LOGGER.log(Level.SEVERE, "Error processing notification message", e);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Unexpected error processing notification message", e);
         }
     }
     

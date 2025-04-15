@@ -3,6 +3,7 @@ package com.taskmanager.service;
 import java.sql.SQLException;
 import java.util.Date;
 import java.util.List;
+import java.util.ArrayList;
 
 import com.taskmanager.config.AppConfig;
 import com.taskmanager.dao.ProjectDAO;
@@ -89,6 +90,28 @@ public class ProjectService {
      */
     public List<Project> getProjectsByTeamMember(Integer userId) throws SQLException {
         return projectDAO.findByTeamMemberId(userId);
+    }
+    
+    /**
+     * Get all projects for a user (both owned projects and team member projects)
+     * @param userId The user ID
+     * @return List of projects associated with the user
+     */
+    public List<Project> getUserProjects(Integer userId) throws SQLException {
+        List<Project> ownedProjects = projectDAO.findByOwnerId(userId);
+        List<Project> memberProjects = projectDAO.findByTeamMemberId(userId);
+        
+        // Create a new combined list to avoid modifying the original lists
+        List<Project> allProjects = new ArrayList<>(ownedProjects);
+        
+        // Add projects where user is a member but not the owner
+        for (Project project : memberProjects) {
+            if (!project.getOwnerId().equals(userId)) {
+                allProjects.add(project);
+            }
+        }
+        
+        return allProjects;
     }
     
     /**
@@ -196,6 +219,24 @@ public class ProjectService {
         }
         
         return stats;
+    }
+    
+    /**
+     * Check if a user has access to a project
+     * @param userId The ID of the user to check
+     * @param projectId The ID of the project to check
+     * @return true if the user has access to the project, false otherwise
+     * @throws SQLException if a database error occurs
+     */
+    public boolean hasAccess(Integer userId, int projectId) throws SQLException {
+        // Check if the user is the project owner
+        Project project = getProjectById(projectId);
+        if (project != null && project.getOwnerId().equals(userId)) {
+            return true;
+        }
+        
+        // Check if the user is a team member
+        return projectDAO.isUserTeamMember(userId, projectId);
     }
     
     /**

@@ -15,6 +15,8 @@ public class User implements Serializable {
     private String email;
     private String password;
     private String fullName;
+    private String firstName;
+    private String lastName;
     private Date registrationDate;
     private boolean active;
     private String role;
@@ -29,12 +31,14 @@ public class User implements Serializable {
         // Default constructor
     }
     
-    public User(Integer id, String username, String email, String password, String fullName) {
+    public User(Integer id, String username, String email, String password, String firstName, String lastName) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.password = password;
-        this.fullName = fullName;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.fullName = firstName + " " + lastName;
         this.registrationDate = new Date();
         this.active = true;
         this.role = "user"; // Default role
@@ -75,11 +79,38 @@ public class User implements Serializable {
     }
     
     public String getFullName() {
+        if (fullName == null && firstName != null && lastName != null) {
+            return firstName + " " + lastName;
+        }
         return fullName;
     }
     
     public void setFullName(String fullName) {
         this.fullName = fullName;
+    }
+    
+    public String getFirstName() {
+        return firstName;
+    }
+    
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+        updateFullName();
+    }
+    
+    public String getLastName() {
+        return lastName;
+    }
+    
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+        updateFullName();
+    }
+    
+    private void updateFullName() {
+        if (firstName != null && lastName != null) {
+            this.fullName = firstName + " " + lastName;
+        }
     }
     
     public Date getRegistrationDate() {
@@ -166,6 +197,6 @@ public class User implements Serializable {
     
     @Override
     public String toString() {
-        return "User [id=" + id + ", username=" + username + ", email=" + email + ", fullName=" + fullName + "]";
+        return "User [id=" + id + ", username=" + username + ", email=" + email + ", firstName=" + firstName + ", lastName=" + lastName + "]";
     }
 }

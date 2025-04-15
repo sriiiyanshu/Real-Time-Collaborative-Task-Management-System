@@ -90,7 +90,7 @@ public class TeamServlet extends HttpServlet {
                     return;
                 }
                 
-                JSONArray membersArray = teamService.getTeamMembers(teamId);
+                JSONArray membersArray = teamService.getTeamMembersAsJson(teamId);
                 out.print(membersArray.toString());
             } else if (pathInfo.matches("/\\d+/projects")) {
                 // Get team projects
@@ -409,12 +409,12 @@ public class TeamServlet extends HttpServlet {
         if (team.getDescription() != null) {
             json.put("description", team.getDescription());
         }
-        json.put("createdBy", team.getCreatedBy());
-        json.put("createdDate", team.getCreatedDate().getTime());
+        json.put("createdBy", team.getCreatorId());
+        json.put("createdDate", team.getCreationDate().getTime());
         
         if (includeMembers) {
             try {
-                json.put("members", teamService.getTeamMembers(team.getId()));
+                json.put("members", teamService.getTeamMembersAsJson(team.getId()));
             } catch (Exception e) {
                 json.put("members", new JSONArray());
             }

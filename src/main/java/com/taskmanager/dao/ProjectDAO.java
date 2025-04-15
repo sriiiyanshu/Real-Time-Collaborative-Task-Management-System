@@ -450,6 +450,74 @@ public class ProjectDAO extends BaseDAO {
     }
     
     /**
+     * Count active projects for a specific user
+     *
+     * @param userId The ID of the user
+     * @return Count of active projects for the user
+     * @throws SQLException if a database error occurs
+     */
+    public int countActiveProjects(Long userId) throws SQLException {
+        String sql = "SELECT COUNT(DISTINCT p.project_id) FROM projects p " +
+                     "LEFT JOIN project_members pm ON p.project_id = pm.project_id " +
+                     "WHERE (p.owner_id = ? OR pm.user_id = ?) AND p.status = 'In Progress'";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, userId);
+            stmt.setLong(2, userId);
+            
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
+     * Find active projects for a specific user
+     *
+     * @param userId The ID of the user
+     * @param limit Maximum number of projects to return
+     * @return List of active projects for the user
+     * @throws SQLException if a database error occurs
+     */
+    public List<Project> findActiveProjects(Long userId, int limit) throws SQLException {
+        String sql = "SELECT DISTINCT p.* FROM projects p " +
+                     "LEFT JOIN project_members pm ON p.project_id = pm.project_id " +
+                     "WHERE (p.owner_id = ? OR pm.user_id = ?) AND p.status = 'In Progress' " +
+                     "ORDER BY p.due_date ASC LIMIT ?";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        List<Project> projects = new ArrayList<>();
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, userId);
+            stmt.setLong(2, userId);
+            stmt.setInt(3, limit);
+            
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                projects.add(mapRowToProject(rs));
+            }
+            return projects;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
      * Map a database row to a Project object
      */
     private Project mapRowToProject(ResultSet rs) throws SQLException {

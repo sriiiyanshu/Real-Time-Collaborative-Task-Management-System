@@ -42,17 +42,23 @@ public class RegisterServlet extends HttpServlet {
      */
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
-        String username = request.getParameter("username");
+        String firstName = request.getParameter("firstName");
+        String lastName = request.getParameter("lastName");
         String email = request.getParameter("email");
         String password = request.getParameter("password");
         String confirmPassword = request.getParameter("confirmPassword");
-        String fullName = request.getParameter("fullName");
+        String terms = request.getParameter("terms");
         
         // Form validation
         boolean hasErrors = false;
         
-        if (!validationUtil.isValidUsername(username)) {
-            request.setAttribute("usernameError", "Username must be 4-20 characters and contain only letters, numbers, and underscores");
+        if (firstName == null || firstName.trim().isEmpty()) {
+            request.setAttribute("firstNameError", "First name is required");
+            hasErrors = true;
+        }
+        
+        if (lastName == null || lastName.trim().isEmpty()) {
+            request.setAttribute("lastNameError", "Last name is required");
             hasErrors = true;
         }
         
@@ -62,7 +68,7 @@ public class RegisterServlet extends HttpServlet {
         }
         
         if (!validationUtil.isValidPassword(password)) {
-            request.setAttribute("passwordError", "Password must be at least 8 characters with at least one uppercase letter, one lowercase letter, and one number");
+            request.setAttribute("passwordError", "Password must be at least 8 characters with at least one uppercase letter, one lowercase letter, one number, and one special character");
             hasErrors = true;
         }
         
@@ -71,13 +77,13 @@ public class RegisterServlet extends HttpServlet {
             hasErrors = true;
         }
         
+        if (terms == null) {
+            request.setAttribute("termsError", "You must agree to the Terms of Service");
+            hasErrors = true;
+        }
+        
         try {
-            // Check if username or email already exists
-            if (userDAO.findByUsername(username) != null) {
-                request.setAttribute("usernameError", "Username already exists");
-                hasErrors = true;
-            }
-            
+            // Check if email already exists
             if (userDAO.findByEmail(email) != null) {
                 request.setAttribute("emailError", "Email already registered");
                 hasErrors = true;
@@ -85,9 +91,9 @@ public class RegisterServlet extends HttpServlet {
             
             if (hasErrors) {
                 // Preserve form data for re-display
-                request.setAttribute("username", username);
+                request.setAttribute("firstName", firstName);
+                request.setAttribute("lastName", lastName);
                 request.setAttribute("email", email);
-                request.setAttribute("fullName", fullName);
                 
                 request.getRequestDispatcher("/register.jsp").forward(request, response);
                 return;
@@ -95,9 +101,9 @@ public class RegisterServlet extends HttpServlet {
             
             // Create new user
             User newUser = new User();
-            newUser.setUsername(username);
+            newUser.setFirstName(firstName);
+            newUser.setLastName(lastName);
             newUser.setEmail(email);
-            newUser.setFullName(fullName);
             newUser.setPassword(authUtil.hashPassword(password)); // Hash the password
             newUser.setRegistrationDate(new java.util.Date());
             newUser.setActive(true);
@@ -111,7 +117,8 @@ public class RegisterServlet extends HttpServlet {
             
         } catch (Exception e) {
             System.out.println("Error in RegisterServlet: " + e.getMessage());
-            request.setAttribute("errorMessage", "An error occurred during registration");
+            e.printStackTrace();
+            request.setAttribute("errorMessage", "An error occurred during registration: " + e.getMessage());
             request.getRequestDispatcher("/register.jsp").forward(request, response);
         }
     }

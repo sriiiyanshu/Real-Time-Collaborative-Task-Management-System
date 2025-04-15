@@ -20,14 +20,23 @@ public class UserDAO extends BaseDAO {
      * Insert a new user into the database
      */
     public Integer insert(User user) throws SQLException {
-        String sql = "INSERT INTO users (username, email, password, full_name, registration_date, is_active) " +
-                     "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO users (username, email, password, full_name, first_name, last_name, registration_date, is_active) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        // Generate a username if not provided
+        if (user.getUsername() == null || user.getUsername().isEmpty()) {
+            // Generate a username from email if username is not provided
+            String emailPrefix = user.getEmail().split("@")[0];
+            user.setUsername(emailPrefix);
+        }
         
         return executeInsert(sql, 
                 user.getUsername(), 
                 user.getEmail(), 
                 user.getPassword(),
                 user.getFullName(),
+                user.getFirstName(),
+                user.getLastName(),
                 new Timestamp(user.getRegistrationDate().getTime()),
                 user.isActive());
     }
@@ -37,7 +46,8 @@ public class UserDAO extends BaseDAO {
      */
     public boolean update(User user) throws SQLException {
         String sql = "UPDATE users SET username = ?, email = ?, password = ?, full_name = ?, " +
-                     "is_active = ?, reset_token = ?, reset_token_expiry = ? WHERE user_id = ?";
+                     "first_name = ?, last_name = ?, is_active = ?, reset_token = ?, reset_token_expiry = ? " +
+                     "WHERE user_id = ?";
         
         Timestamp resetExpiry = user.getResetTokenExpiry() != null ? 
                 new Timestamp(user.getResetTokenExpiry().getTime()) : null;
@@ -47,6 +57,8 @@ public class UserDAO extends BaseDAO {
                 user.getEmail(), 
                 user.getPassword(),
                 user.getFullName(),
+                user.getFirstName(),
+                user.getLastName(),
                 user.isActive(),
                 user.getResetToken(),
                 resetExpiry,
@@ -330,7 +342,28 @@ public class UserDAO extends BaseDAO {
         user.setUsername(rs.getString("username"));
         user.setEmail(rs.getString("email"));
         user.setPassword(rs.getString("password"));
+        
+        // Get full name and individual name components
         user.setFullName(rs.getString("full_name"));
+        
+        // Try to get first_name and last_name fields if they exist in the result set
+        try {
+            user.setFirstName(rs.getString("first_name"));
+            user.setLastName(rs.getString("last_name"));
+        } catch (SQLException e) {
+            // Fields might not exist yet in older database schema
+            // If full_name exists, we can try to split it into first_name and last_name
+            String fullName = user.getFullName();
+            if (fullName != null && !fullName.isEmpty()) {
+                String[] names = fullName.split("\\s+", 2);
+                if (names.length > 0) {
+                    user.setFirstName(names[0]);
+                    if (names.length > 1) {
+                        user.setLastName(names[1]);
+                    }
+                }
+            }
+        }
         
         Timestamp registrationDate = rs.getTimestamp("registration_date");
         if (registrationDate != null) {

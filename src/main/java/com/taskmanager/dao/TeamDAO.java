@@ -11,6 +11,7 @@ import java.util.List;
 
 import com.taskmanager.model.Team;
 import com.taskmanager.model.User;
+import com.taskmanager.model.Project;
 
 /**
  * Data Access Object for Team entities
@@ -322,6 +323,91 @@ public class TeamDAO extends BaseDAO {
     public int countTeamMembers(Integer teamId) throws SQLException {
         String sql = "SELECT COUNT(*) FROM team_members WHERE team_id = ?";
         return executeCountQuery(sql, teamId);
+    }
+    
+    /**
+     * Find projects associated with a team
+     * 
+     * @param teamId The ID of the team
+     * @return List of projects associated with the team
+     * @throws SQLException if a database error occurs
+     */
+    public List<Project> findTeamProjects(Integer teamId) throws SQLException {
+        String sql = "SELECT p.* FROM projects p " +
+                     "JOIN team_projects tp ON p.project_id = tp.project_id " +
+                     "WHERE tp.team_id = ? " +
+                     "ORDER BY p.name";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        List<Project> projects = new ArrayList<>();
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, teamId);
+            
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                Project project = new Project();
+                project.setId(rs.getInt("project_id"));
+                project.setName(rs.getString("name"));
+                project.setDescription(rs.getString("description"));
+                
+                Timestamp creationDate = rs.getTimestamp("creation_date");
+                if (creationDate != null) {
+                    project.setCreationDate(new Date(creationDate.getTime()));
+                }
+                
+                Timestamp dueDate = rs.getTimestamp("due_date");
+                if (dueDate != null) {
+                    project.setDueDate(new Date(dueDate.getTime()));
+                }
+                
+                project.setOwnerId(rs.getInt("owner_id"));
+                project.setStatus(rs.getString("status"));
+                
+                projects.add(project);
+            }
+            return projects;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
+     * Add a project to a team
+     * 
+     * @param teamId The ID of the team
+     * @param projectId The ID of the project to add
+     * @return true if successful, false otherwise
+     * @throws SQLException if a database error occurs
+     */
+    public boolean addTeamProject(Integer teamId, Integer projectId) throws SQLException {
+        String sql = "INSERT INTO team_projects (team_id, project_id, added_date) VALUES (?, ?, ?)";
+        
+        int rowsInserted = executeUpdate(sql, 
+                teamId, 
+                projectId, 
+                new Timestamp(System.currentTimeMillis()));
+        
+        return rowsInserted > 0;
+    }
+    
+    /**
+     * Remove a project from a team
+     * 
+     * @param teamId The ID of the team
+     * @param projectId The ID of the project to remove
+     * @return true if successful, false otherwise
+     * @throws SQLException if a database error occurs
+     */
+    public boolean removeTeamProject(Integer teamId, Integer projectId) throws SQLException {
+        String sql = "DELETE FROM team_projects WHERE team_id = ? AND project_id = ?";
+        
+        int rowsDeleted = executeUpdate(sql, teamId, projectId);
+        return rowsDeleted > 0;
     }
     
     /**
