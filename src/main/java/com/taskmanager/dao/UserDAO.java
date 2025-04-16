@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.List;
 
 import com.taskmanager.model.User;
+import com.taskmanager.model.Activity;
 
 /**
  * Data Access Object for User entities
@@ -334,6 +335,61 @@ public class UserDAO extends BaseDAO {
     }
     
     /**
+     * Get user activities
+     * 
+     * @param userId The ID of the user
+     * @param limit Maximum number of activities to return
+     * @return List of user activities
+     * @throws SQLException if a database error occurs
+     */
+    public List<Activity> getUserActivities(int userId, int limit) throws SQLException {
+        String sql = "SELECT * FROM user_activities " +
+                     "WHERE user_id = ? " +
+                     "ORDER BY timestamp DESC " +
+                     "LIMIT ?";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        List<Activity> activities = new ArrayList<>();
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, userId);
+            stmt.setInt(2, limit);
+            
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                activities.add(mapRowToActivity(rs));
+            }
+            return activities;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
+     * Log a user activity
+     * 
+     * @param activity The activity to log
+     * @return The ID of the new activity record
+     * @throws SQLException if a database error occurs
+     */
+    public Integer logActivity(Activity activity) throws SQLException {
+        String sql = "INSERT INTO user_activities (user_id, type, description, timestamp, entity_type, entity_id) " +
+                     "VALUES (?, ?, ?, ?, ?, ?)";
+        
+        return executeInsert(sql, 
+                activity.getUserId(),
+                activity.getType(),
+                activity.getDescription(),
+                new Timestamp(activity.getTimestamp().getTime()),
+                activity.getEntityType(),
+                activity.getEntityId());
+    }
+    
+    /**
      * Map a database row to a User object
      */
     private User mapRowToUser(ResultSet rs) throws SQLException {
@@ -379,5 +435,26 @@ public class UserDAO extends BaseDAO {
         }
         
         return user;
+    }
+    
+    /**
+     * Map a database row to an Activity object
+     */
+    private Activity mapRowToActivity(ResultSet rs) throws SQLException {
+        Activity activity = new Activity();
+        activity.setId(rs.getInt("activity_id"));
+        activity.setUserId(rs.getInt("user_id"));
+        activity.setType(rs.getString("type"));
+        activity.setDescription(rs.getString("description"));
+        
+        Timestamp timestamp = rs.getTimestamp("timestamp");
+        if (timestamp != null) {
+            activity.setTimestamp(new Date(timestamp.getTime()));
+        }
+        
+        activity.setEntityType(rs.getString("entity_type"));
+        activity.setEntityId(rs.getInt("entity_id"));
+        
+        return activity;
     }
 }

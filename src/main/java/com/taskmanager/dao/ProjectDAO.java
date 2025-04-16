@@ -518,6 +518,38 @@ public class ProjectDAO extends BaseDAO {
     }
     
     /**
+     * Count projects associated with a user (either as creator or team member)
+     * 
+     * @param userId The user ID to count projects for
+     * @return The number of projects associated with the user
+     * @throws SQLException if a database error occurs
+     */
+    public int countByUserId(int userId) throws SQLException {
+        String sql = "SELECT COUNT(DISTINCT p.project_id) FROM projects p " +
+                    "LEFT JOIN project_members pm ON p.project_id = pm.project_id " +
+                    "WHERE p.created_by = ? OR pm.user_id = ?";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, userId);
+            stmt.setInt(2, userId);
+            
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
      * Map a database row to a Project object
      */
     private Project mapRowToProject(ResultSet rs) throws SQLException {

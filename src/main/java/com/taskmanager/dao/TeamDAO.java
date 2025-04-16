@@ -411,6 +411,38 @@ public class TeamDAO extends BaseDAO {
     }
     
     /**
+     * Count teams associated with a user (either as leader or member)
+     * 
+     * @param userId The user ID to count teams for
+     * @return The number of teams associated with the user
+     * @throws SQLException if a database error occurs
+     */
+    public int countByUserId(int userId) throws SQLException {
+        String sql = "SELECT COUNT(DISTINCT t.team_id) FROM teams t " +
+                    "LEFT JOIN team_members tm ON t.team_id = tm.team_id " +
+                    "WHERE t.team_leader_id = ? OR tm.user_id = ?";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, userId);
+            stmt.setInt(2, userId);
+            
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
      * Map a database row to a Team object
      */
     private Team mapRowToTeam(ResultSet rs) throws SQLException {

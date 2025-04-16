@@ -1038,6 +1038,36 @@ public class TaskDAO extends BaseDAO {
     }
     
     /**
+     * Count tasks associated with a user
+     * 
+     * @param userId The user ID to count tasks for
+     * @return The number of tasks associated with the user
+     * @throws SQLException if a database error occurs
+     */
+    public int countByUserId(int userId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM tasks WHERE assignee_id = ? OR creator_id = ?";
+        
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, userId);
+            stmt.setInt(2, userId);
+            
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        } finally {
+            closeResources(rs, stmt, conn);
+        }
+    }
+    
+    /**
      * Map a database row to a Task object
      */
     private Task mapRowToTask(ResultSet rs) throws SQLException {

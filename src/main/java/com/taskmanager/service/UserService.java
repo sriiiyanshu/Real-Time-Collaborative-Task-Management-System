@@ -4,9 +4,15 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 import java.util.Date;
+import java.util.ArrayList;
 
 import com.taskmanager.dao.UserDAO;
+import com.taskmanager.dao.TaskDAO;
+import com.taskmanager.dao.ProjectDAO;
+import com.taskmanager.dao.TeamDAO;
 import com.taskmanager.model.User;
+import com.taskmanager.model.Activity;
+import com.taskmanager.exception.DAOException;
 import com.taskmanager.util.AuthUtil;
 import com.taskmanager.util.ValidationUtil;
 
@@ -16,12 +22,18 @@ import com.taskmanager.util.ValidationUtil;
 public class UserService {
     
     private UserDAO userDAO;
+    private TaskDAO taskDAO;
+    private ProjectDAO projectDAO;
+    private TeamDAO teamDAO;
     private AuthUtil authUtil;
     private ValidationUtil validationUtil;
     private EmailService emailService;
     
     public UserService() {
         userDAO = new UserDAO();
+        taskDAO = new TaskDAO();
+        projectDAO = new ProjectDAO();
+        teamDAO = new TeamDAO();
         authUtil = new AuthUtil();
         validationUtil = new ValidationUtil();
         emailService = new EmailService();
@@ -207,5 +219,60 @@ public class UserService {
      */
     public int countUsers() throws SQLException {
         return userDAO.countUsers();
+    }
+    
+    /**
+     * Get user activity history
+     */
+    public List<Activity> getUserActivity(int userId) throws DAOException {
+        try {
+            return userDAO.getUserActivities(userId, 10); // Limit to 10 recent activities
+        } catch (SQLException e) {
+            throw new DAOException("Error retrieving user activities", e);
+        }
+    }
+    
+    /**
+     * Count tasks associated with a user
+     */
+    public int countUserTasks(int userId) throws DAOException {
+        try {
+            return taskDAO.countByUserId(userId);
+        } catch (SQLException e) {
+            throw new DAOException("Error counting user tasks", e);
+        }
+    }
+    
+    /**
+     * Count projects associated with a user
+     */
+    public int countUserProjects(int userId) throws DAOException {
+        try {
+            return projectDAO.countByUserId(userId);
+        } catch (SQLException e) {
+            throw new DAOException("Error counting user projects", e);
+        }
+    }
+    
+    /**
+     * Count teams associated with a user
+     */
+    public int countUserTeams(int userId) throws DAOException {
+        try {
+            return teamDAO.countByUserId(userId);
+        } catch (SQLException e) {
+            throw new DAOException("Error counting user teams", e);
+        }
+    }
+    
+    /**
+     * Update user with all profile fields
+     */
+    public boolean updateUser(User user) throws DAOException {
+        try {
+            return userDAO.update(user);
+        } catch (SQLException e) {
+            throw new DAOException("Error updating user", e);
+        }
     }
 }

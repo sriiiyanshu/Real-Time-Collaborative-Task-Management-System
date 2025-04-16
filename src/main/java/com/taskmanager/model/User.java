@@ -24,6 +24,9 @@ public class User implements Serializable {
     private Date resetTokenExpiry;
     private String profileImage;
     private String rememberToken;
+    private String jobTitle;
+    private String department;
+    private String phone;
     
     // Constructors
     
@@ -167,6 +170,30 @@ public class User implements Serializable {
     
     public void setRememberToken(String rememberToken) {
         this.rememberToken = rememberToken;
+    }
+    
+    public String getJobTitle() {
+        return jobTitle;
+    }
+    
+    public void setJobTitle(String jobTitle) {
+        this.jobTitle = jobTitle;
+    }
+    
+    public String getDepartment() {
+        return department;
+    }
+    
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+    
+    public String getPhone() {
+        return phone;
+    }
+    
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
     
     public String[] getRoles() {
