@@ -235,7 +235,7 @@ public class ProjectDAO extends BaseDAO {
      * @throws SQLException if a database error occurs
      */
     public List<User> findTeamMembers(Integer projectId) throws SQLException {
-        String sql = "SELECT u.* FROM users u " +
+        String sql = "SELECT u.*, pm.role FROM users u " +
                      "JOIN project_members pm ON u.user_id = pm.user_id " +
                      "WHERE pm.project_id = ? " +
                      "ORDER BY u.full_name";
@@ -572,5 +572,16 @@ public class ProjectDAO extends BaseDAO {
         project.setStatus(rs.getString("status"));
         
         return project;
+    }
+    
+    /**
+     * Get project members (alias for findTeamMembers for better API consistency)
+     * 
+     * @param projectId The ID of the project
+     * @return List of users who are members of the project
+     * @throws SQLException if a database error occurs
+     */
+    public List<User> getProjectMembers(Integer projectId) throws SQLException {
+        return findTeamMembers(projectId);
     }
 }

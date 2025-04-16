@@ -52,6 +52,26 @@ public class AuthenticationFilter implements Filter {
             isLoggedIn = authUtil.checkRememberMeCookie(httpRequest, httpResponse, session);
         }
         
+        String requestURI = httpRequest.getRequestURI();
+        String method = httpRequest.getMethod();
+        
+        // Special handling for POST requests to /projects and /projects/
+        if ((requestURI.equals(httpRequest.getContextPath() + "/projects") || 
+             requestURI.equals(httpRequest.getContextPath() + "/projects/")) && 
+            "POST".equalsIgnoreCase(method)) {
+            
+            // For project creation/editing, ensure we have a valid session
+            if (session == null) {
+                session = httpRequest.getSession(true);
+            }
+            
+            if (isLoggedIn) {
+                // User is authenticated, proceed with the request
+                chain.doFilter(request, response);
+                return;
+            }
+        }
+        
         if (isLoggedIn) {
             // User is authenticated, proceed with the request
             chain.doFilter(request, response);

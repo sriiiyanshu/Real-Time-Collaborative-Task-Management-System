@@ -6,6 +6,10 @@ uri="http://java.sun.com/jsp/jstl/fmt" %> <%@ taglib prefix="fn" uri="http://jav
   <jsp:param name="customCss" value="dashboard.css" />
 </jsp:include>
 
+<div class="logout-button">
+  <a href="${pageContext.request.contextPath}/logout" class="btn btn-danger btn-sm">Logout</a>
+</div>
+
 <jsp:include page="common/navigation.jsp">
   <jsp:param name="active" value="dashboard" />
 </jsp:include>

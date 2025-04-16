@@ -105,7 +105,7 @@
               </div>
               <div class="profile-field">
                 <label>Member Since</label>
-                <div class="field-value"><fmt:formatDate value="${sessionScope.user.createdAt}" pattern="MMMM d, yyyy" /></div>
+                <div class="field-value"><fmt:formatDate value="${sessionScope.user.registrationDate}" pattern="MMMM d, yyyy" /></div>
               </div>
             </div>
 

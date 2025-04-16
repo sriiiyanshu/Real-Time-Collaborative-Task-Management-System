@@ -1,6 +1,7 @@
 package com.taskmanager.servlet;
 
 import com.taskmanager.dao.ProjectDAO;
+import com.taskmanager.dao.UserDAO;
 import com.taskmanager.model.Project;
 import com.taskmanager.model.User;
 import com.taskmanager.service.ProjectService;
@@ -15,6 +16,9 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 import java.sql.SQLException;
+import java.util.Date;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 
 /**
  * Servlet implementation class ProjectServlet
@@ -24,10 +28,12 @@ import java.sql.SQLException;
 public class ProjectServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
     private ProjectService projectService;
+    private UserDAO userDAO;
     private JsonUtil jsonUtil;
     
     public void init() {
         projectService = new ProjectService();
+        userDAO = new UserDAO();
         jsonUtil = new JsonUtil();
     }
     
@@ -37,31 +43,32 @@ public class ProjectServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         String pathInfo = request.getPathInfo();
+        String action = request.getParameter("action");
         
         // Get current user from session
         HttpSession session = request.getSession();
-        User currentUser = (User) session.getAttribute("currentUser");
+        User currentUser = (User) session.getAttribute("user");
         
         if (currentUser == null) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not logged in");
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
             return;
         }
         
-        response.setContentType("application/json");
-        
         try {
-            if (pathInfo == null || pathInfo.equals("/")) {
-                // List all projects for the user
-                // Get both owned projects and projects where user is a team member
-                List<Project> ownedProjects = projectService.getProjectsByOwnerId(currentUser.getId());
-                List<Project> memberProjects = projectService.getProjectsByTeamMember(currentUser.getId());
+            // Handle action parameter for form display
+            if ("new".equals(action)) {
+                // Show new project form
+                // Add available users for team member selection
+                List<User> availableUsers = userDAO.findAll();
+                request.setAttribute("availableUsers", availableUsers);
+                request.setAttribute("now", new Date()); // For default start date
                 
-                // Combine the lists (you may want to handle duplicates if needed)
-                ownedProjects.addAll(memberProjects);
-                jsonUtil.writeJsonResponse(response, ownedProjects);
-            } else {
-                // Get specific project
-                int projectId = Integer.parseInt(pathInfo.substring(1));
+                // Forward to project.jsp
+                request.getRequestDispatcher("/project.jsp").forward(request, response);
+                return;
+            } else if ("edit".equals(action)) {
+                // Get project for editing
+                int projectId = Integer.parseInt(request.getParameter("id"));
                 Project project = projectService.getProjectById(projectId);
                 
                 if (project == null) {
@@ -70,12 +77,63 @@ public class ProjectServlet extends HttpServlet {
                 }
                 
                 // Check if user has access to this project
-                if (!isUserProjectMember(currentUser.getId(), projectId)) {
+                if (!projectService.hasAccess(currentUser.getId(), projectId)) {
                     response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied to this project");
                     return;
                 }
                 
-                jsonUtil.writeJsonResponse(response, project);
+                // Add project and team members to request
+                request.setAttribute("project", project);
+                List<User> projectMembers = projectService.getProjectMembers(projectId);
+                request.setAttribute("projectMembers", projectMembers);
+                
+                // Add available users for team member selection
+                List<User> availableUsers = userDAO.findAll();
+                request.setAttribute("availableUsers", availableUsers);
+                
+                // Forward to project.jsp
+                request.getRequestDispatcher("/project.jsp").forward(request, response);
+                return;
+            } else if (request.getParameter("id") != null) {
+                // Show specific project details
+                int projectId = Integer.parseInt(request.getParameter("id"));
+                Project project = projectService.getProjectById(projectId);
+                
+                if (project == null) {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "Project not found");
+                    return;
+                }
+                
+                // Check if user has access to this project
+                if (!projectService.hasAccess(currentUser.getId(), projectId)) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied to this project");
+                    return;
+                }
+                
+                // Add project and related data to request
+                request.setAttribute("project", project);
+                
+                // Get project members
+                List<User> projectMembers = projectService.getProjectMembers(projectId);
+                request.setAttribute("projectMembers", projectMembers);
+                
+                // Get project tasks
+                request.setAttribute("projectTasks", projectService.getProjectTasks(projectId));
+                
+                // Get project statistics
+                request.setAttribute("projectStats", projectService.getProjectStatistics(projectId));
+                
+                // Forward to project.jsp
+                request.getRequestDispatcher("/project.jsp").forward(request, response);
+                return;
+            } else {
+                // Default: List all user's projects
+                List<Project> userProjects = projectService.getUserProjects(currentUser.getId());
+                request.setAttribute("userProjects", userProjects);
+                
+                // Forward to project.jsp
+                request.getRequestDispatcher("/project.jsp").forward(request, response);
+                return;
             }
         } catch (SQLException e) {
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
@@ -90,77 +148,128 @@ public class ProjectServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         HttpSession session = request.getSession();
-        User currentUser = (User) session.getAttribute("currentUser");
+        User currentUser = (User) session.getAttribute("user");
         
         if (currentUser == null) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not logged in");
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
             return;
         }
         
+        // Get action parameter
+        String action = request.getParameter("action");
+        
         try {
-            Project project = jsonUtil.parseJsonRequest(request, Project.class);
-            project.setOwnerId(currentUser.getId());
-            
-            Project createdProject = projectService.createProject(
-                project.getName(),
-                project.getDescription(),
-                project.getOwnerId(),
-                project.getDueDate()
-            );
-            response.setContentType("application/json");
-            jsonUtil.writeJsonResponse(response, createdProject);
+            if ("edit".equals(action)) {
+                // Update existing project
+                int projectId = Integer.parseInt(request.getParameter("id"));
+                Project project = projectService.getProjectById(projectId);
+                
+                if (project == null) {
+                    request.setAttribute("errorMessage", "Project not found");
+                    request.getRequestDispatcher("/project.jsp").forward(request, response);
+                    return;
+                }
+                
+                // Check if user is project owner
+                if (!project.getOwnerId().equals(currentUser.getId())) {
+                    request.setAttribute("errorMessage", "Only project owner can edit project details");
+                    request.getRequestDispatcher("/project.jsp").forward(request, response);
+                    return;
+                }
+                
+                // Update project fields
+                updateProjectFromRequest(project, request);
+                
+                // Update project in database
+                boolean updated = projectService.updateProject(project);
+                
+                if (updated) {
+                    // Handle team members update
+                    String[] teamMembers = request.getParameterValues("teamMembers");
+                    if (teamMembers != null) {
+                        // Update team members (implementation would handle adding/removing members)
+                        projectService.updateProjectMembers(projectId, teamMembers);
+                    }
+                    
+                    // Redirect to project details
+                    response.sendRedirect(request.getContextPath() + "/projects?id=" + projectId);
+                } else {
+                    request.setAttribute("errorMessage", "Failed to update project");
+                    request.setAttribute("project", project);
+                    request.getRequestDispatcher("/project.jsp").forward(request, response);
+                }
+            } else {
+                // Default: Create new project
+                // Create project object from form data
+                Project project = new Project();
+                project.setOwnerId(currentUser.getId());
+                updateProjectFromRequest(project, request);
+                
+                // Create project in database
+                Project createdProject = projectService.createProject(
+                    project.getName(),
+                    project.getDescription(),
+                    project.getOwnerId(),
+                    project.getDueDate()
+                );
+                
+                if (createdProject != null) {
+                    // Handle team members
+                    String[] teamMembers = request.getParameterValues("teamMembers");
+                    if (teamMembers != null) {
+                        for (String memberId : teamMembers) {
+                            try {
+                                int userId = Integer.parseInt(memberId);
+                                projectService.addProjectMember(createdProject.getId(), userId, "Member");
+                            } catch (NumberFormatException e) {
+                                // Skip invalid IDs
+                            }
+                        }
+                    }
+                    
+                    // Redirect to project details
+                    response.sendRedirect(request.getContextPath() + "/projects?id=" + createdProject.getId());
+                } else {
+                    request.setAttribute("errorMessage", "Failed to create project");
+                    request.setAttribute("project", project); // Return to form with entered data
+                    request.getRequestDispatcher("/project.jsp?action=new").forward(request, response);
+                }
+            }
         } catch (SQLException e) {
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
-        } catch (IllegalArgumentException e) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+            request.setAttribute("errorMessage", "Database error: " + e.getMessage());
+            request.getRequestDispatcher("/project.jsp").forward(request, response);
+        } catch (Exception e) {
+            request.setAttribute("errorMessage", "Error processing request: " + e.getMessage());
+            request.getRequestDispatcher("/project.jsp").forward(request, response);
         }
     }
     
     /**
-     * Handle PUT requests for updating projects
+     * Update project object with data from request
      */
-    protected void doPut(HttpServletRequest request, HttpServletResponse response) 
-            throws ServletException, IOException {
-        String pathInfo = request.getPathInfo();
+    private void updateProjectFromRequest(Project project, HttpServletRequest request) {
+        // Set basic project data
+        project.setName(request.getParameter("name"));
+        project.setDescription(request.getParameter("description"));
+        project.setStatus(request.getParameter("status"));
         
-        if (pathInfo == null || pathInfo.equals("/")) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Project ID is required");
-            return;
-        }
-        
-        HttpSession session = request.getSession();
-        User currentUser = (User) session.getAttribute("currentUser");
-        
-        if (currentUser == null) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not logged in");
-            return;
-        }
-        
+        // Parse dates
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         try {
-            int projectId = Integer.parseInt(pathInfo.substring(1));
-            
-            // Check if user has access to this project
-            if (!isUserProjectMember(currentUser.getId(), projectId)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied to this project");
-                return;
+            String startDateStr = request.getParameter("startDate");
+            if (startDateStr != null && !startDateStr.isEmpty()) {
+                project.setCreationDate(dateFormat.parse(startDateStr));
             }
             
-            Project project = jsonUtil.parseJsonRequest(request, Project.class);
-            project.setId(projectId);
-            
-            boolean updated = projectService.updateProject(project);
-            
-            if (updated) {
-                Project updatedProject = projectService.getProjectById(projectId);
-                response.setContentType("application/json");
-                jsonUtil.writeJsonResponse(response, updatedProject);
-            } else {
-                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Project not found");
+            String endDateStr = request.getParameter("endDate");
+            if (endDateStr != null && !endDateStr.isEmpty()) {
+                project.setDueDate(dateFormat.parse(endDateStr));
             }
-        } catch (SQLException e) {
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
-        } catch (NumberFormatException e) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid project ID format");
+        } catch (ParseException e) {
+            // Use current date if parse fails
+            if (project.getCreationDate() == null) {
+                project.setCreationDate(new Date());
+            }
         }
     }
     
@@ -177,7 +286,7 @@ public class ProjectServlet extends HttpServlet {
         }
         
         HttpSession session = request.getSession();
-        User currentUser = (User) session.getAttribute("currentUser");
+        User currentUser = (User) session.getAttribute("user");
         
         if (currentUser == null) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not logged in");

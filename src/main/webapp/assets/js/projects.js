@@ -859,4 +859,90 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initialize projects module
   Projects.init();
+
+  // Initialize team member functionality
+  initTeamMemberForm();
+
+  // Initialize project form functionality
+  function initTeamMemberForm() {
+    // Add team member button
+    const addTeamMemberBtn = document.getElementById("addTeamMemberBtn");
+    if (addTeamMemberBtn) {
+      // Add click event handler to the button
+      addTeamMemberBtn.addEventListener("click", function () {
+        // Show the team member selection modal
+        $("#teamMemberModal").modal("show");
+      });
+    }
+
+    // Team member search functionality
+    const memberSearchInput = document.getElementById("memberSearchInput");
+    if (memberSearchInput) {
+      memberSearchInput.addEventListener("input", function () {
+        const searchTerm = this.value.toLowerCase();
+        document.querySelectorAll(".member-item").forEach(function (item) {
+          const memberName = item.getAttribute("data-name").toLowerCase();
+          if (memberName.includes(searchTerm)) {
+            item.style.display = "flex";
+          } else {
+            item.style.display = "none";
+          }
+        });
+      });
+    }
+
+    // Select team members
+    document.querySelectorAll(".member-item").forEach(function (item) {
+      item.addEventListener("click", function () {
+        this.classList.toggle("selected");
+      });
+    });
+
+    // Add selected members button
+    const addSelectedMembersBtn = document.getElementById("addSelectedMembers");
+    if (addSelectedMembersBtn) {
+      addSelectedMembersBtn.addEventListener("click", function () {
+        const selectedMembers = document.querySelectorAll(".member-item.selected");
+        const selectedMembersContainer = document.querySelector(".selected-members");
+
+        selectedMembers.forEach(function (member) {
+          const memberId = member.getAttribute("data-id");
+          const memberName = member.getAttribute("data-name");
+          const memberImg = member.querySelector("img").getAttribute("src");
+
+          // Check if this member is already added
+          const existingMember = document.querySelector(`.selected-member input[value="${memberId}"]`);
+          if (!existingMember) {
+            // Create a new member element
+            const memberElement = document.createElement("div");
+            memberElement.className = "selected-member";
+            memberElement.innerHTML = `
+              <input type="hidden" name="teamMembers" value="${memberId}">
+              <img src="${memberImg}" alt="${memberName}">
+              <span>${memberName}</span>
+              <button type="button" class="remove-member">&times;</button>
+            `;
+
+            // Add the new member to the container
+            selectedMembersContainer.appendChild(memberElement);
+
+            // Add remove functionality
+            memberElement.querySelector(".remove-member").addEventListener("click", function () {
+              memberElement.remove();
+            });
+          }
+        });
+
+        // Close the modal
+        $("#teamMemberModal").modal("hide");
+      });
+    }
+
+    // Initialize remove buttons for existing members
+    document.querySelectorAll(".remove-member").forEach(function (button) {
+      button.addEventListener("click", function () {
+        this.closest(".selected-member").remove();
+      });
+    });
+  }
 });

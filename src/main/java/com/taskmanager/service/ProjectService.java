@@ -11,6 +11,7 @@ import com.taskmanager.dao.TaskDAO;
 import com.taskmanager.dao.UserDAO;
 import com.taskmanager.model.Project;
 import com.taskmanager.model.User;
+import com.taskmanager.model.Task;
 
 /**
  * Service class for project-related business logic
@@ -237,6 +238,72 @@ public class ProjectService {
         
         // Check if the user is a team member
         return projectDAO.isUserTeamMember(userId, projectId);
+    }
+    
+    /**
+     * Get all members of a project
+     * @param projectId The ID of the project
+     * @return List of users who are members of the project
+     * @throws SQLException if a database error occurs
+     */
+    public List<User> getProjectMembers(int projectId) throws SQLException {
+        return projectDAO.getProjectMembers(projectId);
+    }
+    
+    /**
+     * Get all tasks associated with a project
+     * @param projectId The ID of the project
+     * @return List of tasks belonging to the project
+     * @throws SQLException if a database error occurs
+     */
+    public List<Task> getProjectTasks(int projectId) throws SQLException {
+        return taskDAO.findByProjectId(projectId);
+    }
+    
+    /**
+     * Update the members of a project
+     * @param projectId The ID of the project
+     * @param memberIds Array of user IDs to be set as project members
+     * @throws SQLException if a database error occurs
+     */
+    public void updateProjectMembers(int projectId, String[] memberIds) throws SQLException {
+        Project project = getProjectById(projectId);
+        if (project == null) {
+            throw new IllegalArgumentException("Project does not exist");
+        }
+        
+        // Get current members to determine who to remove
+        List<User> currentMembers = getProjectMembers(projectId);
+        List<Integer> currentMemberIds = new ArrayList<>();
+        for (User member : currentMembers) {
+            // Don't include the owner in this list as we don't want to remove them
+            if (!member.getId().equals(project.getOwnerId())) {
+                currentMemberIds.add(member.getId());
+            }
+        }
+        
+        // Convert new member IDs to integers
+        List<Integer> newMemberIds = new ArrayList<>();
+        for (String idStr : memberIds) {
+            try {
+                int id = Integer.parseInt(idStr);
+                newMemberIds.add(id);
+                
+                // Add new members that aren't already part of the project
+                if (!currentMemberIds.contains(id) && !project.getOwnerId().equals(id)) {
+                    addProjectMember(projectId, id, "Member");
+                }
+            } catch (NumberFormatException e) {
+                // Skip invalid IDs
+            }
+        }
+        
+        // Remove members that are no longer in the list
+        for (Integer id : currentMemberIds) {
+            if (!newMemberIds.contains(id)) {
+                removeProjectMember(projectId, id);
+            }
+        }
     }
     
     /**
