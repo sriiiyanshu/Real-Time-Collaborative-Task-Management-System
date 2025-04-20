@@ -108,6 +108,20 @@ public class Project implements Serializable {
         return dueDate.before(new Date());
     }
     
+    /**
+     * Get project completion percentage. This is a placeholder that returns 0 by default.
+     * In a real implementation, this would calculate the percentage based on completed tasks.
+     */
+    public int getCompletionPercentage() {
+        // Placeholder implementation
+        // In a real system, this would typically calculate based on the number of
+        // completed tasks vs total tasks in the project
+        if (isCompleted()) {
+            return 100;
+        }
+        return 0; // Default value when tasks are not implemented
+    }
+    
     @Override
     public String toString() {
         return "Project [id=" + id + ", name=" + name + ", ownerId=" + ownerId + ", status=" + status + "]";

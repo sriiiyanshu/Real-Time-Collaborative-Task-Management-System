@@ -6,6 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="context-path" content="${pageContext.request.contextPath}">
     <title>${param.pageTitle != null ? param.pageTitle : 'Task Management System'}</title>
     <link rel="icon" href="${pageContext.request.contextPath}/assets/img/favicon.ico">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/style.css">

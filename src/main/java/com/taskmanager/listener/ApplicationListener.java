@@ -50,6 +50,17 @@ public class ApplicationListener implements ServletContextListener {
             }
         }
         
+        // Create log directories for log4j2
+        String homeDir = System.getProperty("user.home");
+        java.io.File logDir = new java.io.File(homeDir + "/logs/taskmanager");
+        if (!logDir.exists()) {
+            if (logDir.mkdirs()) {
+                System.out.println("Log directory created at: " + logDir.getAbsolutePath());
+            } else {
+                System.err.println("WARNING: Failed to create log directory at: " + logDir.getAbsolutePath());
+            }
+        }
+        
         System.out.println("Task Management System startup completed");
     }
     

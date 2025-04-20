@@ -191,6 +191,16 @@ public class CommentService {
     }
     
     /**
+     * Get comments for a specific task (alias method for getCommentsByTaskId)
+     * @param taskId The ID of the task to get comments for
+     * @return List of comments for the specified task
+     * @throws SQLException if a database error occurs
+     */
+    public List<Comment> getCommentsByTask(int taskId) throws SQLException {
+        return getCommentsByTaskId(taskId);
+    }
+    
+    /**
      * Check if a comment was edited
      */
     public boolean wasCommentEdited(Comment comment) {

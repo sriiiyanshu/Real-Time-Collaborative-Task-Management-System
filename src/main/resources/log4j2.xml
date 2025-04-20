@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="WARN">
+<!-- Changed status to "info" from "trace" to reduce console messages -->
+<Configuration status="info" monitorInterval="30">
     <Properties>
         <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
-        <Property name="APP_LOG_ROOT">/var/log/taskmanager</Property>
+        <Property name="APP_LOG_ROOT">${sys:user.home}/logs/taskmanager</Property>
     </Properties>
     
     <Appenders>
@@ -11,7 +12,8 @@
         </Console>
         
         <RollingFile name="ApplicationLog" fileName="${APP_LOG_ROOT}/application.log"
-                     filePattern="${APP_LOG_ROOT}/application-%d{yyyy-MM-dd}-%i.log">
+                     filePattern="${APP_LOG_ROOT}/application-%d{yyyy-MM-dd}-%i.log"
+                     createOnDemand="true" immediateFlush="true">
             <PatternLayout pattern="${LOG_PATTERN}"/>
             <Policies>
                 <SizeBasedTriggeringPolicy size="10MB" />
@@ -21,7 +23,8 @@
         </RollingFile>
         
         <RollingFile name="ErrorLog" fileName="${APP_LOG_ROOT}/error.log"
-                     filePattern="${APP_LOG_ROOT}/error-%d{yyyy-MM-dd}-%i.log">
+                     filePattern="${APP_LOG_ROOT}/error-%d{yyyy-MM-dd}-%i.log"
+                     createOnDemand="true" immediateFlush="true">
             <PatternLayout pattern="${LOG_PATTERN}"/>
             <Policies>
                 <SizeBasedTriggeringPolicy size="10MB" />
@@ -31,7 +34,8 @@
         </RollingFile>
         
         <RollingFile name="AccessLog" fileName="${APP_LOG_ROOT}/access.log"
-                     filePattern="${APP_LOG_ROOT}/access-%d{yyyy-MM-dd}-%i.log">
+                     filePattern="${APP_LOG_ROOT}/access-%d{yyyy-MM-dd}-%i.log"
+                     createOnDemand="true" immediateFlush="true">
             <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %X{remoteAddr} %X{requestURI} %X{userAgent} %X{sessionId} %X{userId} - %msg%n"/>
             <Policies>
                 <SizeBasedTriggeringPolicy size="10MB" />
@@ -61,6 +65,7 @@
         
         <Logger name="com.taskmanager.filter.RequestLoggingFilter" level="info" additivity="false">
             <AppenderRef ref="AccessLog" />
+            <AppenderRef ref="Console" />
         </Logger>
         
         <Logger name="com.taskmanager.service.AuditService" level="info" additivity="false">
@@ -75,6 +80,7 @@
         <!-- SQL logging -->
         <Logger name="org.hibernate.SQL" level="debug" additivity="false">
             <AppenderRef ref="ApplicationLog" />
+            <AppenderRef ref="Console" />
         </Logger>
         
         <Root level="info">

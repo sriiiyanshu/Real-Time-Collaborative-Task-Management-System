@@ -24,12 +24,21 @@ public class Task implements Serializable {
     private String priority;
     private String status;
     private List<String> tags;
+    private Double estimatedHours;
+    private List<Task> subtasks;
+    private Double loggedHours;
+    private Project project;
+    private Integer completedSubtasks;
     
     // Constructors
     
     public Task() {
         // Default constructor
         this.tags = new ArrayList<>();
+        this.subtasks = new ArrayList<>();
+        this.estimatedHours = 0.0;
+        this.loggedHours = 0.0;
+        this.completedSubtasks = 0;
     }
     
     public Task(String title, String description, Integer projectId, Integer creatorId) {
@@ -41,6 +50,10 @@ public class Task implements Serializable {
         this.priority = "Medium";
         this.status = "To Do";
         this.tags = new ArrayList<>();
+        this.subtasks = new ArrayList<>();
+        this.estimatedHours = 0.0;
+        this.loggedHours = 0.0;
+        this.completedSubtasks = 0;
     }
     
     // Getters and setters
@@ -215,6 +228,74 @@ public class Task implements Serializable {
             return 1;
         }
         return 0;
+    }
+    
+    /**
+     * Get the estimated hours for this task
+     * @return Estimated hours
+     */
+    public Double getEstimatedHours() {
+        return estimatedHours;
+    }
+    
+    /**
+     * Set the estimated hours for this task
+     * @param estimatedHours Estimated hours
+     */
+    public void setEstimatedHours(Double estimatedHours) {
+        this.estimatedHours = estimatedHours;
+    }
+    
+    public List<Task> getSubtasks() {
+        return subtasks != null ? subtasks : new ArrayList<>();
+    }
+    
+    public void setSubtasks(List<Task> subtasks) {
+        this.subtasks = subtasks != null ? subtasks : new ArrayList<>();
+        
+        // Update completed subtasks count
+        this.completedSubtasks = 0;
+        if (this.subtasks != null) {
+            for (Task subtask : this.subtasks) {
+                if (subtask.isCompleted()) {
+                    this.completedSubtasks++;
+                }
+            }
+        }
+    }
+    
+    public void addSubtask(Task subtask) {
+        if (subtasks == null) {
+            subtasks = new ArrayList<>();
+        }
+        subtasks.add(subtask);
+        if (subtask.isCompleted()) {
+            completedSubtasks++;
+        }
+    }
+    
+    public Double getLoggedHours() {
+        return loggedHours != null ? loggedHours : 0.0;
+    }
+    
+    public void setLoggedHours(Double loggedHours) {
+        this.loggedHours = loggedHours != null ? loggedHours : 0.0;
+    }
+    
+    public Project getProject() {
+        return project;
+    }
+    
+    public void setProject(Project project) {
+        this.project = project;
+    }
+    
+    public Integer getCompletedSubtasks() {
+        return completedSubtasks != null ? completedSubtasks : 0;
+    }
+    
+    public void setCompletedSubtasks(Integer completedSubtasks) {
+        this.completedSubtasks = completedSubtasks != null ? completedSubtasks : 0;
     }
     
     @Override

@@ -1,5 +1,7 @@
 package com.taskmanager.servlet;
 
+import com.taskmanager.model.Comment;
+import com.taskmanager.model.Project;
 import com.taskmanager.model.Task;
 import com.taskmanager.model.User;
 import com.taskmanager.service.TaskService;
@@ -24,7 +26,7 @@ import org.json.JSONArray;
  * Servlet responsible for handling task-related operations.
  * Provides endpoints for creating, retrieving, updating, and deleting tasks.
  */
-@WebServlet("/api/tasks/*")
+@WebServlet({"/task/*", "/task", "/api/tasks/*"})
 public class TaskServlet extends HttpServlet {
     
     private TaskService taskService;
@@ -47,12 +49,129 @@ public class TaskServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not logged in");
             return;
         }
+
+        // Check if this is a JSP form request or an API request
+        String action = request.getParameter("action");
+        String acceptHeader = request.getHeader("Accept");
+        boolean isApiRequest = acceptHeader != null && acceptHeader.contains("application/json");
         
-        String pathInfo = request.getPathInfo();
+        // Handle JSP requests
+        if (!isApiRequest && (action != null || request.getParameter("id") != null)) {
+            try {
+                // Set up common attributes for task forms and views
+                String[] taskStatuses = {"To Do", "In Progress", "Under Review", "Completed"};
+                String[] taskPriorities = {"Low", "Medium", "High", "Critical"};
+                request.setAttribute("taskStatuses", taskStatuses);
+                request.setAttribute("taskPriorities", taskPriorities);
+                
+                // Load user projects for project selection
+                List<Project> userProjects = getProjectService().getUserProjects(currentUser.getId());
+                request.setAttribute("userProjects", userProjects);
+                
+                // Handle specific actions
+                if ("new".equals(action)) {
+                    // New task form
+                    String projectIdParam = request.getParameter("projectId");
+                    if (projectIdParam != null && !projectIdParam.isEmpty()) {
+                        int projectId = Integer.parseInt(projectIdParam);
+                        Project project = getProjectService().getProjectById(projectId);
+                        
+                        if (project != null) {
+                            // Get project members for assignee selection
+                            List<User> projectMembers = getProjectService().getProjectMembers(projectId);
+                            request.setAttribute("projectMembers", projectMembers);
+                            request.setAttribute("project", project);
+                        }
+                    } else {
+                        // No project selected, load all users for assignee dropdown
+                        List<User> allUsers = getUserDAO().findAll();
+                        request.setAttribute("projectMembers", allUsers);
+                    }
+                    
+                    // Forward to the task.jsp form
+                    request.getRequestDispatcher("/task.jsp").forward(request, response);
+                    return;
+                } else if ("edit".equals(action)) {
+                    // Edit task form
+                    String taskIdStr = request.getParameter("id");
+                    if (taskIdStr != null && !taskIdStr.isEmpty()) {
+                        int taskId = Integer.parseInt(taskIdStr);
+                        Task task = taskService.getTaskById(taskId);
+                        
+                        if (task != null) {
+                            request.setAttribute("task", task);
+                            
+                            // Get project members for assignee selection
+                            if (task.getProjectId() != null) {
+                                List<User> projectMembers = getProjectService().getProjectMembers(task.getProjectId());
+                                request.setAttribute("projectMembers", projectMembers);
+                            } else {
+                                // No project associated, load all users
+                                List<User> allUsers = getUserDAO().findAll();
+                                request.setAttribute("projectMembers", allUsers);
+                            }
+                            
+                            // Forward to the task.jsp form
+                            request.getRequestDispatcher("/task.jsp").forward(request, response);
+                            return;
+                        }
+                    }
+                } else if (request.getParameter("id") != null) {
+                    // Task detail view
+                    String taskIdStr = request.getParameter("id");
+                    int taskId = Integer.parseInt(taskIdStr);
+                    Task task = taskService.getTaskById(taskId);
+                    
+                    if (task != null) {
+                        // Load task details
+                        request.setAttribute("task", task);
+                        
+                        // Get assignee details
+                        if (task.getAssigneeId() != null) {
+                            User assignee = getUserDAO().findById(task.getAssigneeId());
+                            request.setAttribute("assignee", assignee);
+                        }
+                        
+                        // Get project details
+                        if (task.getProjectId() != null) {
+                            Project project = getProjectService().getProjectById(task.getProjectId());
+                            request.setAttribute("project", project);
+                        }
+                        
+                        // Get task comments
+                        List<Comment> comments = getCommentService().getCommentsByTask(taskId);
+                        request.setAttribute("taskComments", comments);
+                        
+                        // Forward to the task.jsp view
+                        request.getRequestDispatcher("/task.jsp").forward(request, response);
+                        return;
+                    } else {
+                        response.sendError(HttpServletResponse.SC_NOT_FOUND, "Task not found");
+                        return;
+                    }
+                } else {
+                    // Task list view
+                    List<Task> userTasks = taskService.getTasksByAssignee(currentUser.getId());
+                    request.setAttribute("userTasks", userTasks);
+                    request.setAttribute("now", new Date());
+                    
+                    // Forward to the task.jsp list view
+                    request.getRequestDispatcher("/task.jsp").forward(request, response);
+                    return;
+                }
+            } catch (Exception e) {
+                request.setAttribute("errorMessage", "Error loading task data: " + e.getMessage());
+                request.getRequestDispatcher("/task.jsp").forward(request, response);
+                return;
+            }
+        }
+        
+        // Handle API requests
         response.setContentType("application/json");
         PrintWriter out = response.getWriter();
         
         try {
+            String pathInfo = request.getPathInfo();
             if (pathInfo == null || pathInfo.equals("/")) {
                 // Handle different listing options
                 String mode = request.getParameter("mode");
@@ -124,15 +243,177 @@ public class TaskServlet extends HttpServlet {
             return;
         }
         
-        // Read request body
-        BufferedReader reader = request.getReader();
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
+        // Check if this is a time logging request
+        String pathInfo = request.getPathInfo();
+        if (pathInfo != null && pathInfo.equals("/log-time")) {
+            try {
+                // Extract form parameters for time logging
+                String taskIdStr = request.getParameter("taskId");
+                String hoursStr = request.getParameter("hours");
+                
+                if (taskIdStr == null || hoursStr == null) {
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing required parameters");
+                    return;
+                }
+                
+                Integer taskId = Integer.parseInt(taskIdStr);
+                Double hours = Double.parseDouble(hoursStr);
+                
+                // Get the task
+                Task task = taskService.getTaskById(taskId);
+                if (task == null) {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "Task not found");
+                    return;
+                }
+                
+                // Log time for the task
+                boolean success = taskService.logTimeForTask(taskId, currentUser.getId(), hours);
+                
+                if (success) {
+                    // Redirect back to task detail page
+                    response.sendRedirect(request.getContextPath() + "/task?id=" + taskId);
+                } else {
+                    request.setAttribute("errorMessage", "Failed to log time for task");
+                    request.getRequestDispatcher("/task?id=" + taskId).forward(request, response);
+                }
+                return;
+            } catch (NumberFormatException e) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid number format: " + e.getMessage());
+                return;
+            } catch (Exception e) {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error logging time: " + e.getMessage());
+                return;
+            }
         }
         
+        // Check Content-Type to determine how to process the request
+        String contentType = request.getContentType();
+        
+        // Handle form submissions from JSP
+        String action = request.getParameter("action");
+        if (action != null) {
+            if (action.equals("new") || action.equals("edit")) {
+                try {
+                    // Extract form parameters
+                    String title = request.getParameter("title");
+                    String description = request.getParameter("description");
+                    
+                    // Parse projectId
+                    Integer projectId = null;
+                    String projectIdStr = request.getParameter("projectId");
+                    if (projectIdStr != null && !projectIdStr.isEmpty()) {
+                        projectId = Integer.parseInt(projectIdStr);
+                    }
+                    
+                    // Parse assigneeId
+                    Integer assigneeId = null;
+                    String assigneeIdStr = request.getParameter("assigneeId");
+                    if (assigneeIdStr != null && !assigneeIdStr.isEmpty()) {
+                        assigneeId = Integer.parseInt(assigneeIdStr);
+                    }
+                    
+                    // Parse dueDate
+                    Date dueDate = null;
+                    String dueDateStr = request.getParameter("dueDate");
+                    if (dueDateStr != null && !dueDateStr.isEmpty()) {
+                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                        dueDate = dateFormat.parse(dueDateStr);
+                    }
+                    
+                    // Get status and priority
+                    String status = request.getParameter("status");
+                    String priority = request.getParameter("priority");
+                    
+                    // Parse estimated hours
+                    Double estimatedHours = 0.0;
+                    String estimatedHoursStr = request.getParameter("estimatedHours");
+                    if (estimatedHoursStr != null && !estimatedHoursStr.isEmpty()) {
+                        estimatedHours = Double.parseDouble(estimatedHoursStr);
+                    }
+                    
+                    Task task;
+                    if (action.equals("edit")) {
+                        // Update existing task
+                        Integer taskId = Integer.parseInt(request.getParameter("id"));
+                        task = taskService.getTaskById(taskId);
+                        
+                        if (task == null) {
+                            request.setAttribute("errorMessage", "Task not found");
+                            request.getRequestDispatcher("/task.jsp?action=edit&id=" + taskId).forward(request, response);
+                            return;
+                        }
+                        
+                        task.setTitle(title);
+                        task.setDescription(description);
+                        task.setProjectId(projectId);
+                        task.setAssigneeId(assigneeId);
+                        task.setDueDate(dueDate);
+                        task.setStatus(status);
+                        task.setPriority(priority);
+                        task.setEstimatedHours(estimatedHours);
+                        
+                        boolean updated = taskService.updateTask(task, currentUser.getId());
+                        if (!updated) {
+                            request.setAttribute("errorMessage", "Failed to update task");
+                            request.getRequestDispatcher("/task.jsp?action=edit&id=" + taskId).forward(request, response);
+                            return;
+                        }
+                    } else {
+                        // Create new task
+                        task = taskService.createTask(
+                            title,
+                            description,
+                            projectId,
+                            currentUser.getId(),
+                            assigneeId,
+                            dueDate,
+                            priority
+                        );
+                        
+                        if (task == null) {
+                            request.setAttribute("errorMessage", "Failed to create task");
+                            request.getRequestDispatcher("/task.jsp?action=new").forward(request, response);
+                            return;
+                        }
+                        
+                        // Set estimated hours if provided
+                        if (estimatedHours > 0) {
+                            task.setEstimatedHours(estimatedHours);
+                            taskService.updateTask(task, currentUser.getId());
+                        }
+                    }
+                    
+                    // Process subtasks if any
+                    String[] subtaskIds = request.getParameterValues("subtaskId");
+                    String[] subtaskTitles = request.getParameterValues("subtaskTitle");
+                    String[] subtaskStatuses = request.getParameterValues("subtaskStatus");
+                    
+                    if (subtaskTitles != null && subtaskTitles.length > 0) {
+                        // Handle subtask creation/updates
+                        taskService.updateSubtasks(task.getId(), subtaskIds, subtaskTitles, subtaskStatuses);
+                    }
+                    
+                    // Redirect to task detail view
+                    response.sendRedirect(request.getContextPath() + "/task?id=" + task.getId());
+                    return;
+                } catch (Exception e) {
+                    request.setAttribute("errorMessage", "Error processing task: " + e.getMessage());
+                    request.getRequestDispatcher("/task.jsp?action=" + action).forward(request, response);
+                    return;
+                }
+            }
+        }
+        
+        // Handle API JSON requests (existing functionality)
         try {
+            // Read request body
+            BufferedReader reader = request.getReader();
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            
             JSONObject taskData = new JSONObject(sb.toString());
             
             // Parse task data
@@ -349,5 +630,32 @@ public class TaskServlet extends HttpServlet {
         }
         
         return json;
+    }
+    
+    // Helper methods to access other services
+    
+    private com.taskmanager.service.ProjectService projectService;
+    private com.taskmanager.dao.UserDAO userDAO;
+    private com.taskmanager.service.CommentService commentService;
+    
+    private com.taskmanager.service.ProjectService getProjectService() {
+        if (projectService == null) {
+            projectService = new com.taskmanager.service.ProjectService();
+        }
+        return projectService;
+    }
+    
+    private com.taskmanager.dao.UserDAO getUserDAO() {
+        if (userDAO == null) {
+            userDAO = new com.taskmanager.dao.UserDAO();
+        }
+        return userDAO;
+    }
+    
+    private com.taskmanager.service.CommentService getCommentService() {
+        if (commentService == null) {
+            commentService = new com.taskmanager.service.CommentService();
+        }
+        return commentService;
     }
 }

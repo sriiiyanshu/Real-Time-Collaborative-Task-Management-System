@@ -52,17 +52,17 @@
                                 <div class="row mb-4">
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label for="startDate" class="form-label">Start Date</label>
-                                            <input type="date" id="startDate" name="startDate" class="form-control" 
-                                                   value="<fmt:formatDate value='${project != null ? project.startDate : now}' pattern='yyyy-MM-dd'/>" required />
+                                            <label for="creationDate" class="form-label">Creation Date</label>
+                                            <input type="date" id="creationDate" name="creationDate" class="form-control" 
+                                                   value="<fmt:formatDate value='${project != null ? project.creationDate : now}' pattern='yyyy-MM-dd'/>" required />
                                         </div>
                                     </div>
                                     
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label for="endDate" class="form-label">End Date</label>
-                                            <input type="date" id="endDate" name="endDate" class="form-control" 
-                                                   value="<fmt:formatDate value='${project != null ? project.endDate : null}' pattern='yyyy-MM-dd'/>" />
+                                            <label for="dueDate" class="form-label">Due Date</label>
+                                            <input type="date" id="dueDate" name="dueDate" class="form-control" 
+                                                   value="<fmt:formatDate value='${project != null ? project.dueDate : null}' pattern='yyyy-MM-dd'/>" />
                                         </div>
                                     </div>
                                 </div>
@@ -132,15 +132,15 @@
                                         <span class="status-badge badge rounded-pill status-${project.status.toLowerCase()}">${project.status}</span>
                                     </div>
                                     <div class="meta-item me-4 mb-3">
-                                        <span class="meta-label d-block text-muted">Start Date</span>
-                                        <span class="meta-value fw-bold"><fmt:formatDate value="${project.startDate}" pattern="MMM d, yyyy" /></span>
+                                        <span class="meta-label d-block text-muted">Creation Date</span>
+                                        <span class="meta-value fw-bold"><fmt:formatDate value="${project.creationDate}" pattern="MMM d, yyyy" /></span>
                                     </div>
                                     <div class="meta-item me-4 mb-3">
-                                        <span class="meta-label d-block text-muted">End Date</span>
+                                        <span class="meta-label d-block text-muted">Due Date</span>
                                         <span class="meta-value fw-bold">
                                             <c:choose>
-                                                <c:when test="${project.endDate != null}">
-                                                    <fmt:formatDate value="${project.endDate}" pattern="MMM d, yyyy" />
+                                                <c:when test="${project.dueDate != null}">
+                                                    <fmt:formatDate value="${project.dueDate}" pattern="MMM d, yyyy" />
                                                 </c:when>
                                                 <c:otherwise>
                                                     Not specified
@@ -326,10 +326,10 @@
                                                             </span>
                                                             <span class="project-dates badge bg-light text-dark mb-1">
                                                                 <i class="far fa-calendar me-1"></i>
-                                                                <fmt:formatDate value="${project.startDate}" pattern="MMM d" /> - 
+                                                                <fmt:formatDate value="${project.creationDate}" pattern="MMM d" /> - 
                                                                 <c:choose>
-                                                                    <c:when test="${project.endDate != null}">
-                                                                        <fmt:formatDate value="${project.endDate}" pattern="MMM d" />
+                                                                    <c:when test="${project.dueDate != null}">
+                                                                        <fmt:formatDate value="${project.dueDate}" pattern="MMM d" />
                                                                     </c:when>
                                                                     <c:otherwise>
                                                                         Ongoing

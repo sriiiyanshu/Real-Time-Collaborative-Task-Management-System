@@ -31,7 +31,7 @@
                                 <div class="alert alert-danger">${errorMessage}</div>
                             </c:if>
                             
-                            <form action="${pageContext.request.contextPath}/task" method="post">
+                            <form action="${pageContext.request.contextPath}/task" method="post" id="taskForm">
                                 <input type="hidden" name="action" value="${param.action}" />
                                 <c:if test="${param.action == 'edit'}">
                                     <input type="hidden" name="id" value="${task.id}" />
@@ -129,7 +129,7 @@
                                 <div class="form-group">
                                     <label>Subtasks</label>
                                     <div class="subtasks-container">
-                                        <c:if test="${not empty task.subtasks}">
+                                        <c:if test="${task != null && task.subtasks != null && not empty task.subtasks}">
                                             <c:forEach items="${task.subtasks}" var="subtask" varStatus="status">
                                                 <div class="subtask-item">
                                                     <input type="hidden" name="subtaskId" value="${subtask.id}" />
@@ -182,7 +182,7 @@
                                 </div>
                                 
                                 <div class="form-actions">
-                                    <button type="submit" class="btn btn-primary">
+                                    <button type="submit" class="btn btn-primary" id="createTaskButton" onclick="console.log('Button clicked')">
                                         ${param.action == 'new' ? 'Create Task' : 'Save Changes'}
                                     </button>
                                     <a href="${pageContext.request.contextPath}/task" class="btn btn-secondary">Cancel</a>
@@ -223,8 +223,8 @@
                                         <div class="meta-item">
                                             <span class="meta-label">Assigned To</span>
                                             <div class="assignee">
-                                                <img src="${pageContext.request.contextPath}/assets/img/user-default.png" alt="${task.assignee.firstName}" />
-                                                <span>${task.assignee.firstName} ${task.assignee.lastName}</span>
+                                                <img src="${pageContext.request.contextPath}/assets/img/user-default.png" alt="${assignee.firstName}" />
+                                                <span>${assignee.firstName} ${assignee.lastName}</span>
                                             </div>
                                         </div>
                                         <div class="meta-item">
@@ -448,8 +448,13 @@
                                                         </c:choose>
                                                     </span>
                                                     <span class="assignee">
-                                                        <img src="${pageContext.request.contextPath}/assets/img/user-default.png" alt="${task.assignee.firstName}" />
-                                                        ${task.assignee.firstName}
+                                                        <img src="${pageContext.request.contextPath}/assets/img/user-default.png" alt="Assignee" />
+                                                        <c:if test="${not empty assignees[task.id]}">
+                                                            ${assignees[task.id].firstName}
+                                                        </c:if>
+                                                        <c:if test="${empty assignees[task.id]}">
+                                                            Unassigned
+                                                        </c:if>
                                                     </span>
                                                 </div>
                                             </div>
